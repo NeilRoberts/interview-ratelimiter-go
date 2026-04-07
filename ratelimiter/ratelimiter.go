@@ -2,6 +2,7 @@ package ratelimiter
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -25,14 +26,19 @@ type tokenBucketLimiter struct {
 	lastRefill time.Time
 }
 
-func NewTokenBucketLimiter(burst int, period time.Duration) *tokenBucketLimiter {
+func NewTokenBucketLimiter(burst int, period time.Duration) (*tokenBucketLimiter, error) {
+	if !validate(burst, period) {
+		return nil,
+			fmt.Errorf("Burst must be >= 0 and Period must be > 0")
+	}
+
 	rate := float64(burst) / period.Seconds()
 	return &tokenBucketLimiter{
 		capacity:   float64(burst),
 		tokens:     float64(burst),
 		rate:       rate,
 		lastRefill: time.Now(),
-	}
+	}, nil
 }
 
 func (tbl *tokenBucketLimiter) Allow() bool {
@@ -94,4 +100,16 @@ func (tbl *tokenBucketLimiter) timeToNextRefill() time.Duration {
 	waitTime := (refillTokensNeeded / rate) * float64(time.Second)
 
 	return time.Duration(waitTime)
+}
+
+func validate(b int, p time.Duration) bool {
+	return validateBurst(b) && validatePeriod(p)
+}
+
+func validateBurst(b int) bool {
+	return b >= 0
+}
+
+func validatePeriod(p time.Duration) bool {
+	return p > 0
 }

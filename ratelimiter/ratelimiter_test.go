@@ -61,12 +61,41 @@ func TestNewTokenBucketLimiter(t *testing.T) {
 
 	for _, tt := range tests {
 		fmt.Println(tt.name)
-		got := NewTokenBucketLimiter(tt.burst, tt.period)
+		got, err := NewTokenBucketLimiter(tt.burst, tt.period)
 
 		assert.Equal(t, tt.want.capacity, got.capacity, fmt.Sprintf("Mismatched capacity. Want: %f, Got: %f", tt.want.capacity, got.capacity))
 		assert.Equal(t, tt.want.tokens, got.tokens, fmt.Sprintf("Mismatched tokens. Want: %f, Got: %f", tt.want.tokens, got.tokens))
 		assert.Equal(t, tt.want.rate, got.rate, fmt.Sprintf("Mismatched capacity. Want: %f, Got: %f", tt.want.rate, got.rate))
+		assert.NoError(t, err)
 	}
+}
+
+func TestNewTokenBucketLimiterZeroBurst(t *testing.T) {
+	// A limiter set to 0 burst is useless, but not strictly incorrect
+	fmt.Println("Burst set to zero")
+
+	lim, err := NewTokenBucketLimiter(0, time.Second)
+
+	assert.NotNil(t, lim)
+	assert.NoError(t, err)
+}
+
+func TestNewTokenBucketLimiterInvalidBurst(t *testing.T) {
+	fmt.Println("Burst set to invalid value")
+
+	lim, err := NewTokenBucketLimiter(-1, time.Second)
+
+	assert.Nil(t, lim)
+	assert.Error(t, err)
+}
+
+func TestNewTokenBucketLimiterInvalidPeriod(t *testing.T) {
+	fmt.Println("Period set to invalid value")
+
+	lim, err := NewTokenBucketLimiter(5, -1*time.Second)
+
+	assert.Nil(t, lim)
+	assert.Error(t, err)
 }
 
 func TestAllow(t *testing.T) {
@@ -120,7 +149,7 @@ func TestAllow(t *testing.T) {
 	for _, tt := range tests {
 		fmt.Println(tt.name)
 
-		lim := NewTokenBucketLimiter(tt.burst, tt.period)
+		lim, _ := NewTokenBucketLimiter(tt.burst, tt.period)
 		allowed := 0
 		denied := 0
 		for _ = range tt.opVolume {
@@ -140,7 +169,7 @@ func TestAllow(t *testing.T) {
 func TestWait(t *testing.T) {
 	burst := 5 // token refresh will be 200ms
 	period := time.Second
-	waitLimiter := NewTokenBucketLimiter(burst, period)
+	waitLimiter, _ := NewTokenBucketLimiter(burst, period)
 
 	opVolume := 10
 
