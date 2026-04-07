@@ -196,6 +196,54 @@ func TestWait(t *testing.T) {
 	}
 }
 
+func TestWaitWithCancel(t *testing.T) {
+	burst := 5 // token refresh will be 200ms
+	period := time.Second
+	waitLimiter, _ := NewTokenBucketLimiter(burst, period)
+
+	opVolume := 10
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	var err error
+	// Exercise the Waiter normally, without error
+	for _ = range opVolume / 2 {
+		err = waitLimiter.Wait(ctx)
+		assert.NoError(t, err)
+	}
+
+	// Force the error by canceling the context before Waiting
+	cancel()
+	err = waitLimiter.Wait(ctx)
+	assert.Error(t, err)
+}
+
+func TestWaitWithAsyncCancel(t *testing.T) {
+	burst := 0 // limiter will never allow
+	period := time.Second
+	waitLimiter, _ := NewTokenBucketLimiter(burst, period)
+
+	opVolume := 10
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	var err error
+
+	go func() {
+		timer := time.Tick(400 * time.Millisecond)
+		<-timer
+		cancel()
+	}()
+
+	// Exercise the Waiter
+	for _ = range opVolume {
+		err = waitLimiter.Wait(ctx)
+	}
+	assert.Error(t, err)
+}
+
 // Helpers
 func tokenRate(burst int, period time.Duration) float64 {
 	return float64(burst) / period.Seconds()
