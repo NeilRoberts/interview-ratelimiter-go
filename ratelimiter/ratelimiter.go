@@ -79,6 +79,20 @@ func (tbl *tokenBucketLimiter) Wait(ctx context.Context) error {
 	}
 }
 
+func (tbl *tokenBucketLimiter) SetBurst(b int) error {
+	if !validateBurst(b) {
+		return fmt.Errorf("Burst must be >= 0")
+	}
+
+	tbl.mu.Lock()
+	tbl.capacity = float64(b)
+	if tbl.tokens > tbl.capacity {
+		tbl.tokens = tbl.capacity
+	}
+	tbl.mu.Unlock()
+	return nil
+}
+
 func (tbl *tokenBucketLimiter) refill() {
 	elapsed := time.Since(tbl.lastRefill).Seconds()
 	refillTokens := elapsed * tbl.rate

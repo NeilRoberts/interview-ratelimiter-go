@@ -244,6 +244,65 @@ func TestWaitWithAsyncCancel(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSetBurstIncreaseCapacity(t *testing.T) {
+	fmt.Println("SetBurst increases capacity without increasing tokens")
+
+	burst := 5
+	newBurst := 9
+	period := time.Second
+	lim, _ := NewTokenBucketLimiter(burst, period)
+
+	err := lim.SetBurst(newBurst)
+	assert.NoError(t, err)
+
+	var allowed int
+	var denied int
+	for _ = range newBurst {
+		if lim.Allow() {
+			allowed++
+		} else {
+			denied++
+		}
+	}
+	assert.Equal(t, burst, allowed)
+	assert.Equal(t, newBurst-burst, denied)
+}
+
+func TestSetBurstDecreaseCapacity(t *testing.T) {
+	fmt.Println("SetBurst decreases capacity and tokens")
+
+	burst := 5
+	newBurst := 3
+	period := time.Second
+	lim, _ := NewTokenBucketLimiter(burst, period)
+
+	err := lim.SetBurst(newBurst)
+	assert.NoError(t, err)
+
+	var allowed int
+	var denied int
+	for _ = range burst {
+		if lim.Allow() {
+			allowed++
+		} else {
+			denied++
+		}
+	}
+	assert.Equal(t, newBurst, allowed)
+	assert.Equal(t, burst-newBurst, denied)
+
+}
+
+func TestSetBurstInvalidBurst(t *testing.T) {
+	fmt.Println("SetBurst with an invalid value errors")
+	burst := 5
+	period := time.Second
+	lim, _ := NewTokenBucketLimiter(burst, period)
+
+	err := lim.SetBurst(-1)
+	assert.Error(t, err)
+}
+
 // Helpers
 func tokenRate(burst int, period time.Duration) float64 {
 	return float64(burst) / period.Seconds()
