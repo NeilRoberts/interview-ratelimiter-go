@@ -1,4 +1,4 @@
-module github.com/NeilRoberts/censys-ratelimiter
+module github.com/NeilRoberts/interview-ratelimiter-go
 
 go 1.26.1
 
